@@ -68,7 +68,7 @@
 	<key>CFBundleSignature</key>
 	<string>ASLC</string>
 	<key>CFBundleVersion</key>
-	<string>1.2b1</string>
+	<string>1.2b2-arm64</string>
 	<key>NSMainNibFile</key>
 	<string>MainMenu</string>
 	<key>NSRequiresAquaSystemAppearance</key>
