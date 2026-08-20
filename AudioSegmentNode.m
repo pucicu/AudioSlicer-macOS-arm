@@ -141,6 +141,11 @@
 	return endTime - startTime;
 }
 
+- (NSString *)title
+{
+    return @"";
+}
+
 - (void)setDoesSplit:(BOOL)flag
 {
 	doesSplit = flag;

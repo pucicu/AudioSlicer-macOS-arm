@@ -55,6 +55,7 @@ typedef NS_ENUM(NSUInteger, AudioSegmentNodeType) {
 - (double)startTime;
 - (double)endTime;
 - (double)duration;
+- (NSString *)title;
 
 - (void)setDoesSplit:(BOOL)flag;
 - (BOOL)doesSplit;

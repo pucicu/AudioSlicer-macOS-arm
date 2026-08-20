@@ -71,6 +71,8 @@
 	<string>1.2b1</string>
 	<key>NSMainNibFile</key>
 	<string>MainMenu</string>
+	<key>NSRequiresAquaSystemAppearance</key>
+	<true/>
 	<key>NSPrincipalClass</key>
 	<string>NSApplication</string>
 </dict>

@@ -63,8 +63,6 @@
 		8D15AC310486D014006FF6A4 /* SplitDocument.m in Sources */ = {isa = PBXBuildFile; fileRef = 2A37F4ACFDCFA73011CA2CEA /* SplitDocument.m */; settings = {ATTRIBUTES = (); }; };
 		8D15AC320486D014006FF6A4 /* main.m in Sources */ = {isa = PBXBuildFile; fileRef = 2A37F4B0FDCFA73011CA2CEA /* main.m */; settings = {ATTRIBUTES = (); }; };
 		8D15AC340486D014006FF6A4 /* Cocoa.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 1058C7A7FEA54F5311CA2CBB /* Cocoa.framework */; };
-		97FD251A2D0339B600BEB97F /* libmad.0.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = 97FD25192D0339B600BEB97F /* libmad.0.dylib */; };
-		97FD251C2D0339CD00BEB97F /* libtag.1.19.1.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = 97FD251B2D0339CD00BEB97F /* libtag.1.19.1.dylib */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXBuildRule section */
@@ -77,6 +75,7 @@
 			isEditable = 1;
 			outputFiles = (
 			);
+			script = "# Type a script or drag a script file from your workspace to insert its path.\n";
 		};
 		73DE30FD0876D4BA006EC03A /* PBXBuildRule */ = {
 			isa = PBXBuildRule;
@@ -87,6 +86,7 @@
 			isEditable = 1;
 			outputFiles = (
 			);
+			script = "# Type a script or drag a script file from your workspace to insert its path.\n";
 		};
 /* End PBXBuildRule section */
 
@@ -133,6 +133,7 @@
 		3D03626424C075DE006E9D1C /* en */ = {isa = PBXFileReference; lastKnownFileType = wrapper.nib; name = en; path = en.lproj/Preferences.nib; sourceTree = "<group>"; };
 		3D03626524C075DE006E9D1C /* en */ = {isa = PBXFileReference; lastKnownFileType = wrapper.nib; name = en; path = en.lproj/ProgressPanel.nib; sourceTree = "<group>"; };
 		3D03626624C075DE006E9D1C /* en */ = {isa = PBXFileReference; lastKnownFileType = wrapper.nib; name = en; path = en.lproj/SplitDocument.nib; sourceTree = "<group>"; };
+		592B139F3036EFA000A77222 /* libtag.2.3.1.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; name = libtag.2.3.1.dylib; path = ../../../../opt/homebrew/Cellar/taglib/2.3.1/lib/libtag.2.3.1.dylib; sourceTree = "<group>"; };
 		73032C6005DF825500899B94 /* AudioSegmentTree.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = AudioSegmentTree.h; sourceTree = "<group>"; };
 		73032C6105DF825500899B94 /* AudioSegmentTree.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = AudioSegmentTree.m; sourceTree = "<group>"; };
 		73032C6605DF828C00899B94 /* AudioSegmentNode.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = AudioSegmentNode.h; sourceTree = "<group>"; };
@@ -218,8 +219,6 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				97FD251C2D0339CD00BEB97F /* libtag.1.19.1.dylib in Frameworks */,
-				97FD251A2D0339B600BEB97F /* libmad.0.dylib in Frameworks */,
 				8D15AC340486D014006FF6A4 /* Cocoa.framework in Frameworks */,
 				738E370F05DCE62D00E50ED7 /* CoreAudio.framework in Frameworks */,
 				738E371C05DCE63D00E50ED7 /* AudioUnit.framework in Frameworks */,
@@ -301,6 +300,7 @@
 		2A37F4C3FDCFA73011CA2CEA /* Frameworks */ = {
 			isa = PBXGroup;
 			children = (
+				592B139F3036EFA000A77222 /* libtag.2.3.1.dylib */,
 				97FD251B2D0339CD00BEB97F /* libtag.1.19.1.dylib */,
 				97FD25192D0339B600BEB97F /* libmad.0.dylib */,
 				73AEE97F0ACEDAAE00C21CD6 /* IntervalSlider.xcodeproj */,
@@ -668,6 +668,7 @@
 				GCC_WARN_UNKNOWN_PRAGMAS = NO;
 				"HEADER_SEARCH_PATHS[arch=*]" = /opt/homebrew/lib;
 				INFOPLIST_FILE = Info.plist;
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.music";
 				INSTALL_PATH = "$(HOME)/Applications";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(LD_RUNPATH_SEARCH_PATHS_$(IS_MACCATALYST))",
@@ -677,12 +678,16 @@
 					"$(inherited)",
 					/opt/homebrew/Cellar/taglib/1.13.1/lib,
 					/opt/homebrew/Cellar/mad/0.15.1b/lib,
+					/opt/homebrew/Cellar/taglib/2.3.1/lib,
 				);
 				"LIBRARY_SEARCH_PATHS[arch=*]" = /opt/homebrew/lib;
 				MACOSX_DEPLOYMENT_TARGET = 15.0;
 				OTHER_LDFLAGS = (
 					"-liconv",
 					"-lz",
+					"-L/opt/homebrew/lib",
+					"-lmad",
+					"-ltag",
 				);
 				PRODUCT_BUNDLE_IDENTIFIER = net.sourceforge.audioslicer;
 				PRODUCT_NAME = AudioSlicer;
@@ -714,6 +719,7 @@
 				GCC_WARN_UNKNOWN_PRAGMAS = NO;
 				"HEADER_SEARCH_PATHS[arch=*]" = /opt/homebrew/lib;
 				INFOPLIST_FILE = Info.plist;
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.music";
 				INSTALL_PATH = "$(HOME)/Applications";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(LD_RUNPATH_SEARCH_PATHS_$(IS_MACCATALYST))",
@@ -723,12 +729,17 @@
 					"$(inherited)",
 					/opt/homebrew/Cellar/taglib/1.13.1/lib,
 					/opt/homebrew/Cellar/mad/0.15.1b/lib,
+					/opt/homebrew/Cellar/taglib/2.3.1/lib,
 				);
 				"LIBRARY_SEARCH_PATHS[arch=*]" = /opt/homebrew/lib;
 				MACOSX_DEPLOYMENT_TARGET = 15.0;
+				ONLY_ACTIVE_ARCH = YES;
 				OTHER_LDFLAGS = (
 					"-liconv",
 					"-lz",
+					"-L/opt/homebrew/lib",
+					"-lmad",
+					"-ltag",
 				);
 				PRODUCT_BUNDLE_IDENTIFIER = net.sourceforge.audioslicer;
 				PRODUCT_NAME = AudioSlicer;

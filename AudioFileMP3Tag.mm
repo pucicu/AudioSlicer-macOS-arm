@@ -82,7 +82,7 @@ if ([tagDict objectForKey:dictKey] != nil) { \
 		READ_STR_TAG("TCOM", @"Composer");
 		READ_INT_TAG("TDRC", @"Year");
 		
-		if (!tag->genre().isNull()) {
+		if (!tag->genre().isEmpty()) {
 			[tagDict setObject:[NSString stringWithUTF8String:(tag->genre().toCString(true))] forKey:@"Genre"];
 		}
 		

@@ -172,15 +172,18 @@
 
 - (NSMutableArray *)selectedItems
 {
-	NSIndexSet		*selection = [outlineView selectedRowIndexes];
-	NSMutableArray  *items = [NSMutableArray arrayWithCapacity:[selection count]];
-	NSUInteger		currentIndex = [selection firstIndex];
-	while (currentIndex != NSNotFound) {
-		[items addObject:[outlineView itemAtRow:currentIndex]];
-		currentIndex = [selection indexGreaterThanIndex:currentIndex];
-	}
-	
-	return items;
+    NSIndexSet        *selection = [outlineView selectedRowIndexes];
+    NSMutableArray  *items = [NSMutableArray arrayWithCapacity:[selection count]];
+    NSUInteger        currentIndex = [selection firstIndex];
+    while (currentIndex != NSNotFound) {
+        id item = [outlineView itemAtRow:currentIndex];
+        if (item != nil) {
+            [items addObject:item];
+        }
+        currentIndex = [selection indexGreaterThanIndex:currentIndex];
+    }
+    
+    return items;
 }
 
 - (NSMutableArray *)selectedSlices
