@@ -141,6 +141,11 @@
 	return endTime - startTime;
 }
 
+- (id)valueForUndefinedKey:(NSString *)key
+{
+    return nil;
+}
+
 - (NSString *)title
 {
     return @"";

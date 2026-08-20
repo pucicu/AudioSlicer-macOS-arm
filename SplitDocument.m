@@ -125,7 +125,6 @@ NSString	*SplitDocumentContinuousControlFinishedNotification = @"SplitDocumentCo
 		// give a document id for this new document, set frame like last window and auto-cascade
 		documentID = (NSUInteger)[[NSDate date] timeIntervalSince1970];
 		[aController setWindowFrameAutosaveName:[NSString stringWithFormat:@"DocumentWindow-%lu", documentID]];
-		[self updateChangeCount:NSChangeDone];
 		[[aController window] setFrameUsingName:@"DocumentWindow"];
 		[aController setShouldCascadeWindows:YES];
 	} else {
@@ -318,12 +317,14 @@ NSString	*SplitDocumentContinuousControlFinishedNotification = @"SplitDocumentCo
 
 - (BOOL)prepareSavePanel:(NSSavePanel *)savePanel
 {
-	if ([self fileName] == nil) {
-		NSString	*suggestedFileName = [[[[audioFile filePath] lastPathComponent] stringByDeletingPathExtension] stringByAppendingPathExtension:@"split"];
-		[self setFileName:suggestedFileName];
-	}
-	
-	return YES;
+    if ([self fileName] == nil) {
+        NSString *suggestedFileName = [[[[audioFile filePath] lastPathComponent] stringByDeletingPathExtension] stringByAppendingPathExtension:@"split"];
+        if (suggestedFileName != nil) {
+            [savePanel setNameFieldStringValue:suggestedFileName];
+        }
+    }
+    
+    return YES;
 }
 
 - (void)runModalSavePanelForSaveOperation:(NSSaveOperationType)saveOperation delegate:(id)delegate didSaveSelector:(SEL)didSaveSelector contextInfo:(void *)contextInfo
