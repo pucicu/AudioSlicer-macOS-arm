@@ -55,9 +55,15 @@
 
 - (id)copyWithZone:(NSZone *)zone
 {
-	AudioSegmentNode  *copy = (AudioSegmentNode *)NSCopyObject(self, 0, zone);
-	childNodes = [[SkipList alloc] init];
-	return copy;
+    AudioSegmentNode  *copy = (AudioSegmentNode *)NSCopyObject(self, 0, zone);
+    // NSCopyObject does a raw byte copy, so copy->childNodes currently
+    // points at the SAME SkipList as self->childNodes (shared, not
+    // retained). Give the copy its own independent list - note the
+    // "copy->" here is essential; without it this assigns to self's
+    // childNodes instead, leaving the copy aliased to self's original
+    // list with a retain count that doesn't reflect the sharing.
+    copy->childNodes = [[SkipList alloc] init];
+    return copy;
 }
 
 - (void)dealloc
@@ -114,11 +120,20 @@
 
 - (NSComparisonResult)compare:(AudioSegmentNode *)node
 {
-	if (startTime < node->startTime) {
-		return NSOrderedAscending;
-	} else {
-		return NSOrderedDescending;
-	}
+    if (startTime < node->startTime) {
+        return NSOrderedAscending;
+    } else if (startTime > node->startTime) {
+        return NSOrderedDescending;
+    } else if (self == node) {
+        return NSOrderedSame;
+    } else {
+        // Bei identischer startTime nach Objekt-Identität sortieren, damit
+        // jedes Objekt eine eindeutige Position in der Skip-List hat.
+        // Sonst kann removeObject:/split bei mehreren Segmenten mit
+        // gleicher Startzeit (z.B. Null-Länge-Segmente beim Splitten)
+        // den falschen Knoten finden bzw. das Entfernen still fehlschlagen.
+        return (self < node) ? NSOrderedAscending : NSOrderedDescending;
+    }
 }
 
 - (AudioSegmentNodeType)nodeType
@@ -139,6 +154,28 @@
 - (double)duration
 {
 	return endTime - startTime;
+}
+
+// Recursively collects all non-Collection (i.e. actual Audio/Silence)
+// descendant nodes into array, in order.
+- (void)collectLeavesIntoArray:(NSMutableArray *)array
+{
+    // Defensive cap: a real file has at most a few hundred segments.
+    // If we've already collected far more, something is wrong - stop
+    // rather than run away.
+    if ([array count] > 1000) {
+        return;
+    }
+    
+    if (nodeType == AudioSegmentNodeTypeCollection) {
+        [self startEnumeration];
+        AudioSegmentNode *child;
+        while ([array count] <= 1000 && (child = [self nextObject])) {
+            [child collectLeavesIntoArray:array];
+        }
+    } else {
+        [array addObject:self];
+    }
 }
 
 - (id)valueForUndefinedKey:(NSString *)key
@@ -191,8 +228,10 @@
 		BOOL overlapped = NO;
 		for (NSInteger i = 0; i < [childNodes count]; i++) {
 			AudioSegmentNode *n = (AudioSegmentNode *)[childNodes objectAtIndex:i];
-			if ((node->nodeType == AudioSegmentNodeTypeSilence)&& (n->nodeType == AudioSegmentNodeTypeSilence) && [n overlapsWith:node]) {
-				n->startTime = MIN(n->startTime, node->startTime);
+            if ((node->nodeType == n->nodeType) &&
+                (node->nodeType == AudioSegmentNodeTypeSilence || node->nodeType == AudioSegmentNodeTypeAudio) &&
+                [n overlapsWith:node]) {
+                n->startTime = MIN(n->startTime, node->startTime);
 				n->endTime = MAX(n->endTime, node->endTime);
 				overlapped = YES;
 				break;
@@ -248,49 +287,27 @@
 
 - (void)unmergeNode:(AudioSegmentNode *)node inChild:(AudioSegmentNode *)child
 {
-	AudioSegmentNode	*leftNode = nil;
-	AudioSegmentNode	*middleNode = nil;
-	AudioSegmentNode	*rightNode = nil;
-	
-	SkipList			*leftChildren = child->childNodes;
-	SkipList			*rightChildren = [child->childNodes splitSkipListAtObject:node];
-	
-	middleNode = [rightChildren firstObject];
-	child->nodeType = middleNode->nodeType;
-	child->startTime = middleNode->startTime;
-	child->endTime = middleNode->endTime;
-	child->childNodes = [[SkipList alloc] init];
-	[rightChildren removeObject:middleNode];
-	
-	if ([leftChildren count] > 0) {
-		if ([leftChildren count] > 1) {
-			leftNode = [AudioSegmentNode collectionSegmentNode];
-			[leftNode->childNodes release];
-			leftNode->childNodes = leftChildren;
-			leftNode->startTime = ((AudioSegmentNode *)[leftNode->childNodes firstObject])->startTime;
-			leftNode->endTime = ((AudioSegmentNode *)[leftNode->childNodes lastObject])->endTime;
-		} else if ([leftChildren count] == 1) {
-			leftNode = [[leftChildren firstObject] retain];
-			[leftChildren release];
-		}
-		[self addNodeToChildren:leftNode];
-	}
-	
-	if ([rightChildren count] > 0) {
-		if ([rightChildren count] > 1) {
-			rightNode = [AudioSegmentNode collectionSegmentNode];
-			[rightNode->childNodes release];
-			rightNode->childNodes = rightChildren;
-			rightNode->startTime = ((AudioSegmentNode *)[rightNode->childNodes firstObject])->startTime;
-			rightNode->endTime = ((AudioSegmentNode *)[rightNode->childNodes lastObject])->endTime;
-		} else {
-			rightNode = [[rightChildren firstObject] retain];
-			[rightChildren release];
-		}
-		[self addNodeToChildren:rightNode];
-	}
+    // Instead of the fragile in-place SkipList split (splitSkipListAtObject:),
+    // which has proven crash-prone especially when several silences need
+    // unmerging in the same pass: collect all of child's actual leaf
+    // descendants into a plain array, remove child entirely from self,
+    // then re-add each leaf individually via the same well-tested
+    // insertion path (addNodeToChildren:) used everywhere else.
+    [node retain];
+    [child retain];
+    
+    NSMutableArray *leaves = [NSMutableArray array];
+    [child collectLeavesIntoArray:leaves];
+    
+    [childNodes removeObject:child];
+    
+    for (AudioSegmentNode *leaf in leaves) {
+        [self addNodeToChildren:leaf];
+    }
+    
+    [node release];
+    [child release];
 }
-
 
 - (void)startEnumeration
 {

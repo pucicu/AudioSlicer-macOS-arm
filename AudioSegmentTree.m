@@ -363,39 +363,72 @@ NSString *AudioSegmentTreeDidChangeNotification = @"AudioSegmentTreeDidChangeNot
 
 - (void)reorder
 {
-	AudioSegmentNode	*thisNode;
-	AudioSegmentNode	*inCollectionNode;
-	BOOL				treeChanged = NO;
-	
-	[rootNode startEnumeration];
-	while (thisNode = [rootNode nextObject]) {
-		if ([thisNode nodeType] == AudioSegmentNodeTypeSilence) {
-			// check if silence is too short or too long
-			if ([thisNode duration] < minSilenceDuration || [thisNode duration] > maxSilenceDuration) {
-				if (![thisNode doesSplit]) {
-					[rootNode mergeChildWithNeighbours:thisNode];
-					treeChanged = YES;
-				}
-			}
-		}
-		if ([thisNode nodeType] == AudioSegmentNodeTypeCollection) {
-			// check the silences inside the collection, if they are the right duration now
-			[thisNode startEnumeration];
-			while (inCollectionNode = [thisNode nextObject]) {
-				if ([inCollectionNode nodeType] == AudioSegmentNodeTypeSilence) {
-					// check if silence is within limits
-					if ([inCollectionNode duration] >= minSilenceDuration && [inCollectionNode duration] <= maxSilenceDuration) {
-						[rootNode unmergeNode:inCollectionNode inChild:thisNode];
-						treeChanged = YES;
-					}
-				}
-			}
-		}
-	}
-	
-	if (treeChanged) {
-		[self treeDidChange];
-	}
+    // IMPORTANT: mergeChildWithNeighbours: and unmergeNode:inChild: mutate
+    // (and sometimes deallocate/replace) the very SkipList that is
+    // currently being walked via startEnumeration/nextObject. Mutating a
+    // collection while enumerating it corrupts the enumeration cursor and
+    // crashes (use-after-free inside SkipList). So: find exactly one node
+    // to merge/unmerge, apply that single change, then start the search
+    // over from scratch. The tree is small, so this is cheap.
+    AudioSegmentNode    *thisNode;
+    AudioSegmentNode    *inCollectionNode;
+    BOOL                treeChanged = NO;
+    BOOL                didSomething = YES;
+    
+    while (didSomething) {
+        didSomething = NO;
+        
+        // Pass 1: find a single silence node that needs merging.
+        AudioSegmentNode    *nodeToMerge = nil;
+        [rootNode startEnumeration];
+        while (thisNode = [rootNode nextObject]) {
+            if ([thisNode nodeType] == AudioSegmentNodeTypeSilence) {
+                if ([thisNode duration] < minSilenceDuration || [thisNode duration] > maxSilenceDuration) {
+                    if (![thisNode doesSplit]) {
+                        nodeToMerge = thisNode;
+                        break;
+                    }
+                }
+            }
+        }
+        if (nodeToMerge) {
+            [rootNode mergeChildWithNeighbours:nodeToMerge];
+            treeChanged = YES;
+            didSomething = YES;
+            continue;
+        }
+        
+        // Pass 2: find a single silence node inside a collection that needs unmerging.
+        AudioSegmentNode    *collectionNode = nil;
+        AudioSegmentNode    *silenceNode = nil;
+        [rootNode startEnumeration];
+        while (thisNode = [rootNode nextObject]) {
+            if ([thisNode nodeType] == AudioSegmentNodeTypeCollection) {
+                [thisNode startEnumeration];
+                while (inCollectionNode = [thisNode nextObject]) {
+                    if ([inCollectionNode nodeType] == AudioSegmentNodeTypeSilence) {
+                        if ([inCollectionNode duration] >= minSilenceDuration && [inCollectionNode duration] <= maxSilenceDuration) {
+                            collectionNode = thisNode;
+                            silenceNode = inCollectionNode;
+                            break;
+                        }
+                    }
+                }
+            }
+            if (collectionNode) {
+                break;
+            }
+        }
+        if (collectionNode) {
+            [rootNode unmergeNode:silenceNode inChild:collectionNode];
+            treeChanged = YES;
+            didSomething = YES;
+        }
+    }
+    
+    if (treeChanged) {
+        [self treeDidChange];
+    }
 }
 
 - (void)calculateMinMaxSilenceDurations;

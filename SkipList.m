@@ -151,14 +151,17 @@
 		i = lastFingeredIndex;
 	}
 	
-	for ( ; n != nil; n = n->forward[0], i++) {
-		if (i == index) {
-			lastFingeredObject = n;
-			lastFingeredIndex = i;
-			return n->obj;
-		}
-	}
-	
+    for ( ; n != nil; n = n->forward[0], i++) {
+        if ((uintptr_t)n < 0x1000) {
+            break;
+        }
+        if (i == index) {
+            lastFingeredObject = n;
+            lastFingeredIndex = i;
+            return n->obj;
+        }
+    }
+    
 	return nil;
 }
 
@@ -237,8 +240,10 @@
 	n = n->forward[0];
 	
 	// remove node
-	if (n->obj == anObject) {
-		if (n->forward[0] == nil) {
+    // n can be nil here if anObject is not actually in the list (e.g. it
+    // was already removed elsewhere, or would be the very last element).
+    // n->obj on a nil C pointer is undefined behavior - guard against it.
+    if (n != nil && n->obj == anObject) {		if (n->forward[0] == nil) {
 			lastNode = update[0];
 		}
 		
@@ -336,20 +341,29 @@
 
 - (void)emptyList
 {
-	for (SkipListNode *n = header->forward[0]; n != nil; n = n->forward[0]) {
-		[n->obj release];
-		free(n);
-	}
-	
-	for (NSInteger i = 0; i < MaxNumberOfLevels; i++) {
-		header->forward[i] = nil;
-	}
-	numElements = 0;
-	level = 0;
-	
-	lastFingeredObject = nil;
-	lastFingeredIndex = 0;
-	lastNode = nil;
+    // Defensive: if the forward-pointer chain is somehow corrupted (a
+    // node's forward[0] pointing at implausible memory - real heap
+    // pointers are never in the first 4KB of address space), stop the
+    // traversal there rather than crash. Trades a possible small memory
+    // leak for robustness against whatever occasionally corrupts this
+    // chain - much preferable to a hard crash for the user.
+    SkipListNode *n = header->forward[0];
+    while (n != nil && (uintptr_t)n >= 0x1000) {
+        SkipListNode *next = n->forward[0];
+        [n->obj release];
+        free(n);
+        n = next;
+    }
+    
+    for (NSInteger i = 0; i < MaxNumberOfLevels; i++) {
+        header->forward[i] = nil;
+    }
+    numElements = 0;
+    level = 0;
+    
+    lastFingeredObject = nil;
+    lastFingeredIndex = 0;
+    lastNode = nil;
 }
 
 
@@ -360,14 +374,19 @@
 
 - (id)nextObject
 {
-	if (enumerationNode) {
-		enumerationNode = enumerationNode->forward[0];
-		if (enumerationNode) {
-			return enumerationNode->obj;
-		}
-	}
-	
-	return nil;
+    if (enumerationNode) {
+        SkipListNode *next = enumerationNode->forward[0];
+        if (next != nil && (uintptr_t)next < 0x1000) {
+            enumerationNode = nil;
+            return nil;
+        }
+        enumerationNode = next;
+        if (enumerationNode) {
+            return enumerationNode->obj;
+        }
+    }
+    
+    return nil;
 }
 
 @end
